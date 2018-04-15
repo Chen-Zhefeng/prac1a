@@ -3,6 +3,7 @@
 #include <ctype.h>
 #include <openssl/evp.h>
 #include <openssl/err.h>
+#include <openssl/hmac.h>
 #include <openssl/x509v3.h>
 
 using namespace std;
@@ -114,7 +115,7 @@ int OpenSSL_Digest(  const char *digestname,
 
         fprintf( stderr, "OpenSSL_Cipher: EVP_DigestInit failed: \nopenssl return %d, %s\n", n, szErr );
 
-        rv = -3;
+        rv = -2;
         goto err;
     }
 
@@ -128,7 +129,7 @@ int OpenSSL_Digest(  const char *digestname,
 
         fprintf( stderr, "OpenSSL_Cipher: EVP_DigestUpdate failed: \nopenssl return %d, %s\n", n, szErr );
 
-        rv = -4;
+        rv = -3;
             goto err;
     }
 
@@ -139,7 +140,7 @@ int OpenSSL_Digest(  const char *digestname,
 
         fprintf( stderr, "OpenSSL_Cipher: EVP_DigestFinal failed: \nopenssl return %d, %s\n", n, szErr );
 
-        rv = -5;
+        rv = -4;
             goto err;
     }
 
@@ -150,7 +151,60 @@ err:
     return rv;
 }
 
+int OpenSSL_HMAC(const char *algor, const unsigned char * key,
+	 const unsigned char *input, unsigned int inlen,
+	 unsigned  char *output, unsigned int *poutlen)
+{
+    int rv = 0, n =0;
+    const EVP_MD *digest = NULL;
+    char szErr[1024];
+    HMAC_CTX ctx;  
+    HMAC_CTX_init(&ctx);    
+    digest = EVP_get_digestbyname(algor);
+    if (NULL == digest) 
+    {
+        fprintf( stderr, "OpenSSL_HMAC: Digest for %s is NULL\n", digest );
+        rv = -1;
+        goto err;
+    }
+    printf("key length:%d\n", strlen((const char*)key));
+    if (!HMAC_Init_ex(&ctx, key, strlen((const char*)key), digest, NULL)) 
+    {
+        n  = ERR_get_error();
+        ERR_error_string( n, szErr );
+        fprintf( stderr, "OpenSSL_HMAC: HMAC_Init_ex failed: \nopenssl return %d, %s\n", n, szErr );
 
+        rv = -2;
+        goto err;
+    }
+ 
+   if (!HMAC_Update(&ctx, input, inlen)) 
+   {
+        n  = ERR_get_error();
+        ERR_error_string( n, szErr );
+
+        fprintf( stderr, "OpenSSL_HMAC: HMAC_Update failed: \nopenssl return %d, %s\n", n, szErr );
+
+        rv = -3;
+        goto err;
+    }
+
+    if (!HMAC_Final(&ctx, output, poutlen)) 
+    {
+        n  = ERR_get_error();
+        ERR_error_string( n, szErr );
+
+        fprintf( stderr, "OpenSSL_HMAC: HMAC_Final failed: \nopenssl return %d, %s\n", n, szErr );
+
+        rv = -4;
+        goto err;
+    }
+
+
+err:
+    HMAC_CTX_cleanup(&ctx);
+    return rv;
+}
 
 unsigned char *Byte2Hex (const unsigned char* input, int inlen, bool with_new_line)
 {
@@ -437,7 +491,7 @@ void Test_Cipher(const char *ciphername, const unsigned char *mess, int messlen,
     const unsigned char *szMess =  mess;
 	unsigned char aKey[64];
         for(int i=0 ; i<64; ++i)
-	    aKey[i] = i;
+	    aKey[i] = 63-i;
 	const unsigned char iVec[16] = {0};
 
 	int inlen = messlen;
@@ -522,7 +576,7 @@ void Test_Digest(const char *digestname, const unsigned char *mess, int messlen,
 	
     printf("digest len(in byte): %d\n",  enclen);
 	printf("digest with format of hex :\n%s\n", hexEncode);
-	printf("crypto with format of  base64:\n%s\n",base64Encode);
+	printf("cro with format of  base64:\n%s\n",base64Encode);
         printf("digest len(hex&&base64):%d %d\n",strlen((const char*)hexEncode), strlen((const char*)base64Encode));
    
 err:
@@ -532,32 +586,72 @@ err:
 	    free(base64Encode);
 	
 }
+
+void Test_HMAC(const char *algor, const unsigned char *mess, int messlen, bool with_new_line)
+{
+     	const char *digest = algor;
+        const unsigned char *szMess =  mess;
+	int inlen = messlen;
+	unsigned char aKey[65];
+        for(int i=0 ; i<65; ++i)
+	    aKey[i] = 64 - i;
+	unsigned char encData[1024] = {0};
+        unsigned int enclen = 0;
+         unsigned char *hexEncode = NULL;
+ 	unsigned char *base64Encode = NULL;
+   	  
+
+   if ( OpenSSL_HMAC(digest, aKey, szMess, inlen, encData, &enclen))
+ 	return;
+	printf("\ndigestname: %s\nmessage:%s\nmeslen:%d\n", digest, szMess, inlen);
+        if (!(hexEncode = Byte2Hex(encData, enclen, with_new_line)))
+            return;
+	
+	if (!(base64Encode = Base64Encode(encData, enclen, with_new_line)))
+            goto err;
+	
+    printf("hmac len(in byte): %d\n",  enclen);
+	printf("hmac with format of hex :\n%s\n", hexEncode);
+	printf("hmac with format of  base64:\n%s\n",base64Encode);
+        printf("hmac len(hex&&base64):%d %d\n",strlen((const char*)hexEncode), strlen((const char*)base64Encode));
+   
+err:
+        if(!hexEncode)
+	    free(hexEncode);
+	if(!base64Encode)
+	    free(base64Encode);
+	
+}
+
 void TestCore(const unsigned char* szMess)
 {
 	OpenSSL_add_all_algorithms();
 	printf("\n----------------------without new line!-----------------------\n"); 
-    Test_Cipher("des-ede-cbc", szMess, strlen((const char*)szMess), 0);
-    Test_Cipher("aes-128-ofb", szMess, strlen((const char*)szMess), 0);
-    Test_Cipher("rc4", szMess, strlen((const char*)szMess), 0);
-	Test_Digest("md5", szMess, strlen((const char*)szMess), 0);
+/*    Test_Cipher("des-ede-cbc", szMess, strlen((const char*)szMess), 0);
+//    Test_Cipher("aes-128-ofb", szMess, strlen((const char*)szMess), 0);
+//    Test_Cipher("rc4", szMess, strlen((const char*)szMess), 0);
+//	Test_Digest("md5", szMess, strlen((const char*)szMess), 0);
 	Test_Digest("sha1", szMess, strlen((const char*)szMess), 0);
-
-
+*/        Test_HMAC("md5", szMess, strlen((const char*)szMess), 0);
+        Test_HMAC("sha1", szMess, strlen((const char*)szMess), 0);
+        
 	printf("\n-----------------------with new line!-------------------------\n"); 
-     Test_Cipher("des-ede-cbc", szMess, strlen((const char*)szMess), 1);
+/*     Test_Cipher("des-ede-cbc", szMess, strlen((const char*)szMess), 1);
     Test_Cipher("aes-128-ofb", szMess, strlen((const char*)szMess), 1);
     Test_Cipher("rc4", szMess, strlen((const char*)szMess), 1);
 	Test_Digest("md5", szMess, strlen((const char*)szMess), 1);
-	Test_Digest("sha1", szMess, strlen((const char*)szMess), 1);
-
+	Test_Digest("sha1", szMess, strlen((const char*)szMess), 1);  
+*/        Test_HMAC("md5", szMess, strlen((const char*)szMess), 1);
+        Test_HMAC("sha1", szMess, strlen((const char*)szMess), 1);
+    
    //与OpenSSl_add_all_algorithms正好相反
 	EVP_cleanup();
 }
 void Tests1()
 { 
-	printf("-----------------------------------------------------------------------\n");  
+	printf("\n-----------------------------------------------------------------------\n");  
         printf("----------------------------Tests1 start!------------------------------\n");  
-        printf("-----------------------------------------------------------------------\n\n"); 
+        printf("-----------------------------------------------------------------------\n"); 
 	const unsigned char szMess[] = "";
 	TestCore(szMess);
 	
@@ -567,9 +661,9 @@ void Tests1()
 }
 void Tests2()
 {  	
-	printf("-----------------------------------------------------------------------\n");  
+	printf("\n-----------------------------------------------------------------------\n");  
         printf("----------------------------Tests2 start!------------------------------\n");  
-        printf("-----------------------------------------------------------------------\n\n"); 
+        printf("-----------------------------------------------------------------------\n"); 
 	
 	const unsigned char szMess[] = "T";
 	TestCore(szMess);
@@ -579,9 +673,9 @@ void Tests2()
 }
 void Tests3()
 {  	
-	printf("-----------------------------------------------------------------------\n");  
+	printf("\n-----------------------------------------------------------------------\n");  
         printf("----------------------------Tests3 start!------------------------------\n");  
-        printf("-----------------------------------------------------------------------\n\n"); 
+        printf("-----------------------------------------------------------------------\n"); 
 	
 	const unsigned char szMess[] = "Th";
 	TestCore(szMess);
@@ -592,9 +686,9 @@ void Tests3()
 
 void Tests4()
 {  
-	printf("----------------------------------------------------------------------\n");  
+	printf("\n----------------------------------------------------------------------\n");  
         printf("----------------------------Tests4 start!------------------------------\n");  
-        printf("-----------------------------------------------------------------------\n\n"); 
+        printf("-----------------------------------------------------------------------\n"); 
 	
 	const unsigned char szMess[] = "This is a test!This is a test!This is a test!This is a test!This is a test!This is a test!This ";	
 	TestCore(szMess);
@@ -605,9 +699,9 @@ void Tests4()
 
 void Tests5()
 {  
-	printf("----------------------------------------------------------------------\n");  
+	printf("\n----------------------------------------------------------------------\n");  
         printf("----------------------------Tests5 start!------------------------------\n");  
-        printf("-----------------------------------------------------------------------\n\n"); 
+        printf("-----------------------------------------------------------------------\n"); 
 	
 	const unsigned char szMess[] = "This is a test!This is a test!This is a test!This is a test!This is a test!This is a test!This i";
 	TestCore(szMess);
@@ -619,9 +713,9 @@ void Tests5()
 
 void Tests6()
 {  
-	printf("----------------------------------------------------------------------\n");  
+	printf("\n----------------------------------------------------------------------\n");  
         printf("----------------------------Tests6 start!------------------------------\n");  
-        printf("-----------------------------------------------------------------------\n\n"); 
+        printf("-----------------------------------------------------------------------\n"); 
 	
 	const unsigned char szMess[] = "This is a test!This is a test!This is a test!This is a test!This is a test!This is a test!This is";
 	TestCore(szMess);
