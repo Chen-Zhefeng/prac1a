@@ -1,6 +1,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <ctype.h>
+#include <errno.h>
 #include <openssl/evp.h>
 #include <openssl/err.h>
 #include <openssl/hmac.h>
@@ -54,7 +55,7 @@ int OpenSSL_Cipher(const char *ciphername, int dir, const unsigned char *aKey,
 	if (!EVP_CipherUpdate(&ctx, out, poutlen, in, inlen)) 
 	{
 		n = ERR_get_error();
-		fprintf(stderr, "OpenSSL_Cipher: EVP_CipherInit failed: \nopenssl return %d, %s\n", n, szErr);
+		fprintf(stderr, "OpenSSL_Cipher: EVP_CipherUpdate failed: \nopenssl return %d, %s\n", n, szErr);
 
 		rv = -3;
 		goto err;
@@ -211,8 +212,8 @@ unsigned char *Byte2Hex (const unsigned char* input, int inlen, bool with_new_li
 	int rv = 0;
 	int i = 0, j = 0;
 	unsigned char tmp = 0;
-    unsigned char *output = NULL;
-    int outlen = 0;
+  unsigned char *output = NULL;
+  int outlen = 0;
 /*	if (outlen - 1 < inlen * 2)
 	{
 		fprintf(stderr, "Byte2Hex: output length(%d) is to short!", outlen);
@@ -220,44 +221,44 @@ unsigned char *Byte2Hex (const unsigned char* input, int inlen, bool with_new_li
 		goto err;
 	}
 */
-    if (!input)
+  if (!input)
 	{
-       	fprintf(stderr, "Byte2Hex: input null pointer!");
-	    goto err;
+    fprintf(stderr, "Byte2Hex: input null pointer!");
+	  goto err;
 	}
 	
 	if (!with_new_line)
-	    outlen = inlen * 2 + 1;
+	  outlen = inlen * 2 + 1;
 	else 
-        outlen = inlen * 2 + inlen / 32 + 1 + ((inlen * 2 ) % 64 != 0);
+    outlen = inlen * 2 + inlen / 32 + 1 + ((inlen * 2 ) % 64 != 0);
 	
 
 	if (!(output = (unsigned char*)malloc(outlen)))
 	{
-        fprintf(stderr, "Byte2Hex: function malloc fail");
+    fprintf(stderr, "Byte2Hex: function malloc fail");
 		goto err;
 	}	
 	for (; i < inlen; ++i) 
-    {
+  {
 		tmp = (input[i] & 0xF0) >> 4;
 		if(tmp < 10)
-            output[j++] = tmp + '0';
+      output[j++] = tmp + '0';
 		else
 			output[j++] = tmp - 0x0A + 'A';
 		
 		tmp = (input[i] & 0x0F);
-	    if(tmp < 10)
-		    output[j++] = tmp + '0';
+	  if(tmp < 10)
+		  output[j++] = tmp + '0';
 		else
-	 	    output[j++] = tmp - 0x0A + 'A';
-        if (with_new_line)
+	 	  output[j++] = tmp - 0x0A + 'A';
+    if (with_new_line)
 		{
-            if (0 == (j+1) % 65)    //every 64-character, new line
-               output[j++] = '\n';
+      if (0 == (j+1) % 65)    //every 64-character, new line
+        output[j++] = '\n';
 		}
 	}
 	if (with_new_line && j % 65 != 0)
-	    output[j++] = '\n';
+	  output[j++] = '\n';
 	output[j] = '\0';
 
 err:
@@ -267,36 +268,36 @@ err:
 //Note: piolen is a input&output para
 unsigned char *Hex2Byte (const unsigned char* input, int *piolen, bool with_new_line)
 {
-    int i = 0, j = 0;
+  int i = 0, j = 0;
 	unsigned char tmp = 0;
-    unsigned char *output = NULL;
-    int outlen = 0;
-    int reallen = *piolen - *piolen / 65 - (*piolen % 65 != 0);
-         if (!input)
+  unsigned char *output = NULL;
+  int outlen = 0;
+  int reallen = *piolen - *piolen / 65 - (*piolen % 65 != 0);
+  if (!input)
 	{
-       	    fprintf(stderr, "Hex2Byte: input null pointer!");
-	    goto err;
+    fprintf(stderr, "Hex2Byte: input null pointer!");
+	  goto err;
 	}
-        if (!with_new_line)
+  if (!with_new_line)
 	{
-            if (*piolen % 2 == 1)
-            {
- 		fprintf(stderr, "Hex2Byte: intput length error!");
-		goto err;
-	    }
+    if (*piolen % 2 == 1)
+    {
+ 		  fprintf(stderr, "Hex2Byte: intput length error!");
+		  goto err;
+	  }
 	}
 	else
 	{
-	     if (reallen % 2 == 1)
-            {
- 		fprintf(stderr, "Hex2Byte: intput length error!");
-		goto err;
-	    } 
+	  if (reallen % 2 == 1)
+    {
+ 		  fprintf(stderr, "Hex2Byte: intput length error!");
+		  goto err;
+	  } 
 	}
 /*	if (outlen - 1  < inlen / 2)
 	{
-	    fprintf(stderr, "Hex2Byte: output length(%d) is to short!", outlen);
-	    rv = -1;
+	  fprintf(stderr, "Hex2Byte: output length(%d) is to short!", outlen);
+	  rv = -1;
 		goto err;
 	 }
 */	 
@@ -305,16 +306,16 @@ unsigned char *Hex2Byte (const unsigned char* input, int *piolen, bool with_new_
 	else
 		outlen = reallen / 2;
 
-    if (!(output = (unsigned char*)malloc(outlen)))
+  if (!(output = (unsigned char*)malloc(outlen)))
 	{
-        fprintf(stderr, "Hex2Byte: function malloc fail");
+    fprintf(stderr, "Hex2Byte: function malloc fail");
 		goto err;
 	}
-        if (with_new_line && *piolen % 65 != 0)  //ignore the last ‘\n’
+  if (with_new_line && *piolen % 65 != 0)  //ignore the last ‘\n’
 		--(*piolen); 
 	for (; i < *piolen; i += 2, ++j)
 	{
-        tmp = input[i];
+    tmp = input[i];
 		if (tmp >= '0' && tmp <= '9')
 		{
 			tmp -= '0';
@@ -333,30 +334,30 @@ unsigned char *Hex2Byte (const unsigned char* input, int *piolen, bool with_new_
 		output[j] = (tmp << 4);
 
 		tmp = input[i+1];
-	    if (tmp >= '0' && tmp <= '9')
-	    {
+	  if (tmp >= '0' && tmp <= '9')
+	  {
 			tmp -= '0';
 		}
-	    else if (tmp >= 'a' && tmp <='z' || tmp >= 'A' && tmp <= 'Z')
-	    {
+	  else if (tmp >= 'a' && tmp <='z' || tmp >= 'A' && tmp <= 'Z')
+	  {
 			tmp = (unsigned char)toupper((int)tmp) - 'A' + 0x0A;
 		}
-        else
+    else
 		{
-		    fprintf(stderr, "Hex2Byte: input format error!");
-		    free(output);
-		    output = NULL;
-		    goto err;
-	    }
+		  fprintf(stderr, "Hex2Byte: input format error!");
+		  free(output);
+		  output = NULL;
+		  goto err;
+	  }
 		output[j] |= tmp;
         
 		if(with_new_line)    //skip '\n'
 		{
-		    if (0 == (i + 3) % 65)
-			    ++i;	
+		  if (0 == (i + 3) % 65)
+			++i;	
 		}
 	}
-        *piolen = outlen;
+  *piolen = outlen;
 //dont need anymore
 //	output[j] = '\0';
 
@@ -366,39 +367,39 @@ err:
 
 unsigned char * Base64Encode(const unsigned char * input, int length, bool with_new_line)  
 {  
-    BIO * bmem = NULL;  
-    BIO * b64 = NULL;  
-    BUF_MEM * bptr = NULL;  
-    unsigned char *buff = NULL;
-    if(!input)
-    {	
-       	fprintf(stderr, "Base64Encode: input is null pointer!");
-	goto err;
-    }
+  BIO * bmem = NULL;  
+  BIO * b64 = NULL;  
+  BUF_MEM * bptr = NULL;  
+  unsigned char *buff = NULL;
+  if(!input)
+  {	
+    fprintf(stderr, "Base64Encode: input is null pointer!");
+	  goto err;
+  }
 
-    b64 = BIO_new(BIO_f_base64());  
-    if (!with_new_line)
-   	{  
-	        BIO_set_flags(b64, BIO_FLAGS_BASE64_NO_NL);  
+  b64 = BIO_new(BIO_f_base64());  
+  if (!with_new_line)
+  {  
+	  BIO_set_flags(b64, BIO_FLAGS_BASE64_NO_NL);  
 	}  
-    bmem = BIO_new(BIO_s_mem());  
-    b64 = BIO_push(b64, bmem);  //形成BIO链
-    BIO_write(b64, input, length);  
-    BIO_flush(b64);  
-    BIO_get_mem_ptr(b64, &bptr);  
+  bmem = BIO_new(BIO_s_mem());  
+  b64 = BIO_push(b64, bmem);  //形成BIO链
+  BIO_write(b64, input, length);  
+  BIO_flush(b64);  
+  BIO_get_mem_ptr(b64, &bptr);  
   
-    if (!(buff = (unsigned char *)malloc(bptr->length + 1))) 
-    {
-        fprintf(stderr, "Hex2Byte: function malloc fail");
-        BIO_free_all(b64);
+  if (!(buff = (unsigned char *)malloc(bptr->length + 1))) 
+  {
+    fprintf(stderr, "Hex2Byte: function malloc fail");
+    BIO_free_all(b64);
 		goto err;
-    }
-    memcpy(buff, bptr->data, bptr->length);  
-    buff[bptr->length] = 0;  
+  }
+  memcpy(buff, bptr->data, bptr->length);  
+  buff[bptr->length] = 0;  
     
-    BIO_free_all(b64);  
+  BIO_free_all(b64);  
 err:  
-    return buff;  
+  return buff;  
 }  	
 
 //Note: piolen is a input&output para
@@ -406,80 +407,80 @@ unsigned char* Base64Decode(const unsigned char *input, int* piolen, bool with_n
 {
 	BIO *b64 = NULL;
 	BIO *bmem =NULL;
-    int outlen = 0;
+  int outlen = 0;
 	unsigned char *buffer = NULL;
-    int reallen = *piolen - *piolen / 65 - (*piolen % 65 != 0);
-    if(!input)
+  int reallen = *piolen - *piolen / 65 - (*piolen % 65 != 0);
+  if(!input)
 	{	
-       	fprintf(stderr, "Base64Decode: input null pointer!");
+    fprintf(stderr, "Base64Decode: input null pointer!");
 		goto err;
-    }
-    if (!with_new_line)
+  }
+  if (!with_new_line)
 	{
-        if (*piolen % 4 != 0)
-        {
- 		    fprintf(stderr, "Base64Decode: intput length error!");
-		    goto err;
-	    }
+    if (*piolen % 4 != 0)
+    {
+ 		  fprintf(stderr, "Base64Decode: intput length error!");
+		  goto err;
+	  }
 	}
 	else
 	{
-	    if (reallen  % 4 != 0)
-        {
- 		    fprintf(stderr, "Base64Decode: intput length error!");
-		    goto err;
-	    } 
+	  if (reallen  % 4 != 0)
+    {
+ 		  fprintf(stderr, "Base64Decode: intput length error!");
+		  goto err;
+	  } 
 	}
 
-    if (!with_new_line)
+  if (!with_new_line)
+  {
+    outlen = *piolen / 4 * 3;
+    if ('=' == input[*piolen -1])
     {
-        outlen = *piolen / 4 * 3;
-        if ('=' == input[*piolen -1])
-        {
-            --outlen;
-		    if ('=' == input[*piolen - 2])
+      --outlen;
+		  if ('=' == input[*piolen - 2])
 		    --outlen;
-        }
     }
+  }
 	else
 	{
-	    outlen = reallen / 4 * 3;
-	    if ('\n' == input[*piolen -1])
-	    {
-	    	if ('=' == input[*piolen -2])
-		{
+	  outlen = reallen / 4 * 3;
+	  if ('\n' == input[*piolen -1])
+	  {
+	    if ('=' == input[*piolen -2])
+		  {
 		    --outlen;
 		    if('=' == input[*piolen - 3])
-			--outlen;
-		}
-	    }
-	    else if ('=' == input[*piolen -1])
-	    {
+			    --outlen;
+		  }
+	  }
+	  else if ('=' == input[*piolen -1])
+	  {
+		  --outlen;
+		  if('=' == input[*piolen - 2])
 		    --outlen;
-		    if('=' == input[*piolen - 2])
-		    --outlen;
-	    }
-    }
-         //malloc size can not be too small
-    if(!(buffer =(unsigned char*) malloc(outlen)))
-    {
-        fprintf(stderr, "Base64Decode: function malloc fail");
-	    goto err;
+	  }
+  }
+  //malloc size can not be too small
+  if(!(buffer =(unsigned char*) malloc(outlen)))
+  {
+    fprintf(stderr, "Base64Decode: function malloc fail");
+	  goto err;
 	}
-    memset(buffer, 0, outlen);
+  memset(buffer, 0, outlen);
 
 	b64 = BIO_new(BIO_f_base64());
-    if (!with_new_line)
+  if (!with_new_line)
 	{
 		BIO_set_flags(b64, BIO_FLAGS_BASE64_NO_NL);
 	}
 	bmem = BIO_new_mem_buf(input, *piolen);
-    b64 = BIO_push(b64, bmem);  //
-        //之前由于把最后一个空格干掉了，导致b64转换错误
-  	BIO_read(b64, buffer, outlen);
+  b64 = BIO_push(b64, bmem);  //
+  //之前由于把最后一个空格干掉了，导致b64转换错误
+  BIO_read(b64, buffer, outlen);
     
 	BIO_free_all(b64);
-    *piolen = outlen;
+  *piolen = outlen;
 err:	
 	return buffer;
 }
@@ -488,138 +489,138 @@ err:
 void Test_Cipher(const char *ciphername, const unsigned char *mess, int messlen,  bool with_new_line)
 {
 	const char *cipher = ciphername;
-    const unsigned char *szMess =  mess;
+  const unsigned char *szMess =  mess;
 	unsigned char aKey[64];
-    for(int i=0 ; i<64; ++i)
-	    aKey[i] = 63-i;
+  for(int i=0 ; i<64; ++i)
+	  aKey[i] = 63-i;
 	const unsigned char iVec[16] = {0};
 
 	int inlen = messlen;
 	unsigned char encData[1024] = {0};
 	unsigned char decData[1024] = {0};
-    int enclen = 0;
-    int declen = 0;
-    unsigned char *hexEncode = NULL;
+  int enclen = 0;
+  int declen = 0;
+  unsigned char *hexEncode = NULL;
  	unsigned char *base64Encode = NULL;
-   	unsigned char *hexDecode = NULL;
-    unsigned char *base64Decode = NULL;
-    int hexlen = 0;
-    int base64len = 0;
+  unsigned char *hexDecode = NULL;
+  unsigned char *base64Decode = NULL;
+  int hexlen = 0;
+  int base64len = 0;
    
-    if (OpenSSL_Cipher(cipher, 1, aKey, iVec, szMess, inlen, encData, &enclen))
-        return;
+  if (OpenSSL_Cipher(cipher, 1, aKey, iVec, szMess, inlen, encData, &enclen))
+    return;
     
 //	unsigned char *enchex = string_to_hex((const char*)encData, (long*)&enclen);
    
-    if (!(hexEncode = Byte2Hex(encData, enclen, with_new_line)))
-        return;
+  if (!(hexEncode = Byte2Hex(encData, enclen, with_new_line)))
+    return;
 	
 	if (!(base64Encode = Base64Encode(encData, enclen, with_new_line)))
-        goto err;
+    goto err;
 	printf("\nciphername: %s\nmessage:%s\nmeslen:%d\n", cipher, szMess, inlen);
 	printf("-------------------encrypto-------------------------\n");
-    printf("crypto text len(in byte): %d\n",  enclen);
+  printf("crypto text len(in byte): %d\n",  enclen);
 	printf("crypto text with hex:\n%s\n", hexEncode);
 	printf("crypto text with base64:\n%s\n",base64Encode);
-    printf("after transform:%d %d\n",strlen((const char*)hexEncode), strlen((const char*)base64Encode));
+  printf("after transform:%d %d\n",strlen((const char*)hexEncode), strlen((const char*)base64Encode));
    
 	
-    hexlen = strlen((const char*)hexEncode);
+  hexlen = strlen((const char*)hexEncode);
 	if (!(hexDecode = Hex2Byte (hexEncode, &hexlen, with_new_line)))
-	    goto err;
+	  goto err;
        
     
-    base64len = strlen((const char*)base64Encode);
+  base64len = strlen((const char*)base64Encode);
 	if (!(base64Decode = Base64Decode(base64Encode, &base64len, with_new_line)))
-	    goto err; 
+	  goto err; 
 	printf("after recover:%d %d\n", hexlen, base64len);
        
-    if (OpenSSL_Cipher(cipher, 0, aKey, iVec, hexDecode, hexlen, decData, &declen))
-	    goto err;
+  if (OpenSSL_Cipher(cipher, 0, aKey, iVec, hexDecode, hexlen, decData, &declen))
+	  goto err;
 	printf("-------------------decrypto-------------------------\n");
 	printf("plain text decoded by hex: \n%s\nplain text len: %d\n", decData, declen);
     
-    if(OpenSSL_Cipher(cipher, 0, aKey, iVec, base64Decode, base64len, decData, &declen))
-	    goto err;
+  if(OpenSSL_Cipher(cipher, 0, aKey, iVec, base64Decode, base64len, decData, &declen))
+	  goto err;
 	printf("plain text decoded by base64: \n%s\nplain text len: %d\n", decData, declen);
     
 err:
-    if(!hexEncode)
-	    free(hexEncode);
+  if(!hexEncode)
+	  free(hexEncode);
 	if(!hexDecode)
-	    free(hexDecode);
+	  free(hexDecode);
 	if(!base64Encode)
-	    free(base64Encode);
+	  free(base64Encode);
 	if(!base64Decode)
-	    free(base64Decode);
+	  free(base64Decode);
 }
 
 void Test_Digest(const char *digestname, const unsigned char *mess, int messlen, bool with_new_line)
 {
-    const char *digest = digestname;
-    const unsigned char *szMess =  mess;
+  const char *digest = digestname;
+  const unsigned char *szMess =  mess;
 	int inlen = messlen;
 	unsigned char encData[1024] = {0};
-    unsigned int enclen = 0;
-    unsigned char *hexEncode = NULL;
+  unsigned int enclen = 0;
+  unsigned char *hexEncode = NULL;
  	unsigned char *base64Encode = NULL;
    	  
 
-    if ( OpenSSL_Digest(digest, szMess, inlen, encData, &enclen))
- 	   return;
+  if ( OpenSSL_Digest(digest, szMess, inlen, encData, &enclen))
+ 	  return;
 	printf("\ndigestname: %s\nmessage:%s\nmeslen:%d\n", digest, szMess, inlen);
-        if (!(hexEncode = Byte2Hex(encData, enclen, with_new_line)))
-            return;
+  if (!(hexEncode = Byte2Hex(encData, enclen, with_new_line)))
+    return;
 	
 	if (!(base64Encode = Base64Encode(encData, enclen, with_new_line)))
-        goto err;
+    goto err;
 	
-    printf("digest len(in byte): %d\n",  enclen);
+  printf("digest len(in byte): %d\n",  enclen);
 	printf("digest with format of hex :\n%s\n", hexEncode);
 	printf("cro with format of  base64:\n%s\n",base64Encode);
-    printf("digest len(hex&&base64):%d %d\n",strlen((const char*)hexEncode), strlen((const char*)base64Encode));
+  printf("digest len(hex&&base64):%d %d\n",strlen((const char*)hexEncode), strlen((const char*)base64Encode));
    
 err:
-    if(!hexEncode)
-	    free(hexEncode);
+  if(!hexEncode)
+	  free(hexEncode);
 	if(!base64Encode)
-	    free(base64Encode);
+	  free(base64Encode);
 	
 }
 
 void Test_HMAC(const char *algor, const unsigned char *mess, int messlen, bool with_new_line)
 {
-    const char *digest = algor;
-    const unsigned char *szMess =  mess;
+  const char *digest = algor;
+  const unsigned char *szMess =  mess;
 	int inlen = messlen;
 	unsigned char aKey[65];
-    for(int i=0 ; i<65; ++i)
-	    aKey[i] = 64 - i;
+  for(int i=0 ; i<65; ++i)
+	  aKey[i] = 64 - i;
 	unsigned char encData[1024] = {0};
-    unsigned int enclen = 0;
-    unsigned char *hexEncode = NULL;
+  unsigned int enclen = 0;
+  unsigned char *hexEncode = NULL;
  	unsigned char *base64Encode = NULL;
    	  
 
-    if ( OpenSSL_HMAC(digest, aKey, szMess, inlen, encData, &enclen))
- 	    return;
+  if ( OpenSSL_HMAC(digest, aKey, szMess, inlen, encData, &enclen))
+ 	  return;
 	printf("\ndigestname: %s\nmessage:%s\nmeslen:%d\n", digest, szMess, inlen);
-    if (!(hexEncode = Byte2Hex(encData, enclen, with_new_line)))
-        return;
+  if (!(hexEncode = Byte2Hex(encData, enclen, with_new_line)))
+    return;
 	
 	if (!(base64Encode = Base64Encode(encData, enclen, with_new_line)))
-        goto err;
+    goto err;
 	
-    printf("hmac len(in byte): %d\n",  enclen);
+  printf("hmac len(in byte): %d\n",  enclen);
 	printf("hmac with format of hex :\n%s\n", hexEncode);
 	printf("hmac with format of  base64:\n%s\n",base64Encode);
-    printf("hmac len(hex&&base64):%d %d\n",strlen((const char*)hexEncode), strlen((const char*)base64Encode));
+  printf("hmac len(hex&&base64):%d %d\n",strlen((const char*)hexEncode), strlen((const char*)base64Encode));
    
 err:
-    if(!hexEncode)
-	    free(hexEncode);
+  if(!hexEncode)
+	  free(hexEncode);
 	if(!base64Encode)
-	    free(base64Encode);
+	  free(base64Encode);
 	
 }
 
@@ -627,22 +628,22 @@ void TestCore(const unsigned char* szMess)
 {
 	OpenSSL_add_all_algorithms();
 	printf("\n----------------------without new line!-----------------------\n"); 
-    Test_Cipher("des-ede-cbc", szMess, strlen((const char*)szMess), 0);
-    Test_Cipher("aes-128-ofb", szMess, strlen((const char*)szMess), 0);
-    Test_Cipher("rc4", szMess, strlen((const char*)szMess), 0);
+  Test_Cipher("des-ede-cbc", szMess, strlen((const char*)szMess), 0);
+  Test_Cipher("aes-128-ofb", szMess, strlen((const char*)szMess), 0);
+  Test_Cipher("rc4", szMess, strlen((const char*)szMess), 0);
 	Test_Digest("md5", szMess, strlen((const char*)szMess), 0);
 	Test_Digest("sha1", szMess, strlen((const char*)szMess), 0);
 	Test_HMAC("md5", szMess, strlen((const char*)szMess), 0);
-    Test_HMAC("sha1", szMess, strlen((const char*)szMess), 0);
+  Test_HMAC("sha1", szMess, strlen((const char*)szMess), 0);
         
 	printf("\n-----------------------with new line!-------------------------\n"); 
-    Test_Cipher("des-ede-cbc", szMess, strlen((const char*)szMess), 1);
-    Test_Cipher("aes-128-ofb", szMess, strlen((const char*)szMess), 1);
-    Test_Cipher("rc4", szMess, strlen((const char*)szMess), 1);
+  Test_Cipher("des-ede-cbc", szMess, strlen((const char*)szMess), 1);
+  Test_Cipher("aes-128-ofb", szMess, strlen((const char*)szMess), 1);
+  Test_Cipher("rc4", szMess, strlen((const char*)szMess), 1);
 	Test_Digest("md5", szMess, strlen((const char*)szMess), 1);
 	Test_Digest("sha1", szMess, strlen((const char*)szMess), 1);  
-    Test_HMAC("md5", szMess, strlen((const char*)szMess), 1);
-    Test_HMAC("sha1", szMess, strlen((const char*)szMess), 1);
+  Test_HMAC("md5", szMess, strlen((const char*)szMess), 1);
+  Test_HMAC("sha1", szMess, strlen((const char*)szMess), 1);
     
    //与OpenSSl_add_all_algorithms正好相反
 	EVP_cleanup();
@@ -650,89 +651,89 @@ void TestCore(const unsigned char* szMess)
 void Tests1()
 { 
 	printf("\n-----------------------------------------------------------------------\n");  
-    printf("----------------------------Tests1 start!------------------------------\n");  
-    printf("-----------------------------------------------------------------------\n"); 
+  printf("----------------------------Tests1 start!------------------------------\n");  
+  printf("-----------------------------------------------------------------------\n"); 
 	const unsigned char szMess[] = "";
 	TestCore(szMess);
 	
 	printf("-----------------------------------------------------------------------\n");
-    printf("-----------------------------Tests1 end!-------------------------------\n");
-    printf("-----------------------------------------------------------------------\n\n");       
+  printf("-----------------------------Tests1 end!-------------------------------\n");
+  printf("-----------------------------------------------------------------------\n\n");       
 }
 void Tests2()
 {  	
 	printf("\n-----------------------------------------------------------------------\n");  
-    printf("----------------------------Tests2 start!------------------------------\n");  
-    printf("-----------------------------------------------------------------------\n"); 
+  printf("----------------------------Tests2 start!------------------------------\n");  
+  printf("-----------------------------------------------------------------------\n"); 
 	
 	const unsigned char szMess[] = "T";
 	TestCore(szMess);
 	printf("-----------------------------------------------------------------------\n");
-    printf("-----------------------------Tests2 end!-------------------------------\n");
-    printf("-----------------------------------------------------------------------\n\n");  
+  printf("-----------------------------Tests2 end!-------------------------------\n");
+  printf("-----------------------------------------------------------------------\n\n");  
 }
 void Tests3()
 {  	
 	printf("\n-----------------------------------------------------------------------\n");  
-    printf("----------------------------Tests3 start!------------------------------\n");  
-    printf("-----------------------------------------------------------------------\n"); 
+  printf("----------------------------Tests3 start!------------------------------\n");  
+  printf("-----------------------------------------------------------------------\n"); 
 	
 	const unsigned char szMess[] = "Th";
 	TestCore(szMess);
 	printf("-----------------------------------------------------------------------\n");
-    printf("-----------------------------Tests3 end!-------------------------------\n");
-    printf("-----------------------------------------------------------------------\n\n");  
+  printf("-----------------------------Tests3 end!-------------------------------\n");
+  printf("-----------------------------------------------------------------------\n\n");  
 }
 
 void Tests4()
 {  
 	printf("\n----------------------------------------------------------------------\n");  
-    printf("----------------------------Tests4 start!------------------------------\n");  
-    printf("-----------------------------------------------------------------------\n"); 
+  printf("----------------------------Tests4 start!------------------------------\n");  
+  printf("-----------------------------------------------------------------------\n"); 
 	
 	const unsigned char szMess[] = "This is a test!This is a test!This is a test!This is a test!This is a test!This is a test!This ";	
 	TestCore(szMess);
 	printf("-----------------------------------------------------------------------\n");
-    printf("-----------------------------Tests4 end!-------------------------------\n");
-    printf("-----------------------------------------------------------------------\n\n");  
+  printf("-----------------------------Tests4 end!-------------------------------\n");
+  printf("-----------------------------------------------------------------------\n\n");  
 }
 
 void Tests5()
 {  
 	printf("\n----------------------------------------------------------------------\n");  
-    printf("----------------------------Tests5 start!------------------------------\n");  
-    printf("-----------------------------------------------------------------------\n"); 
+  printf("----------------------------Tests5 start!------------------------------\n");  
+  printf("-----------------------------------------------------------------------\n"); 
 	
 	const unsigned char szMess[] = "This is a test!This is a test!This is a test!This is a test!This is a test!This is a test!This i";
 	TestCore(szMess);
 	printf("-----------------------------------------------------------------------\n");
-    printf("-----------------------------Tests5 end!-------------------------------\n");
-    printf("-----------------------------------------------------------------------\n\n");
+  printf("-----------------------------Tests5 end!-------------------------------\n");
+  printf("-----------------------------------------------------------------------\n\n");
 }
 
 
 void Tests6()
 {  
 	printf("\n----------------------------------------------------------------------\n");  
-    printf("----------------------------Tests6 start!------------------------------\n");  
-    printf("-----------------------------------------------------------------------\n"); 
+  printf("----------------------------Tests6 start!------------------------------\n");  
+  printf("-----------------------------------------------------------------------\n"); 
 	
 	const unsigned char szMess[] = "This is a test!This is a test!This is a test!This is a test!This is a test!This is a test!This is";
 	TestCore(szMess);
 	printf("-----------------------------------------------------------------------\n");
-    printf("-----------------------------Tests6 end!-------------------------------\n");
-    printf("-----------------------------------------------------------------------\n\n");
+  printf("-----------------------------Tests6 end!-------------------------------\n");
+  printf("-----------------------------------------------------------------------\n\n");
 
 }
 
-
+extern int errno;
 int main()
 {
-    Tests1();
-    Tests2();
-	Tests3();
-    Tests4();	
-    Tests5();
-    Tests6();
+  Tests1();
+  Tests2();
+  Tests3();
+  Tests4();	
+  Tests5();
+  Tests6();
 	return 0;
 }
